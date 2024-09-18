@@ -21,7 +21,7 @@ public class LibraryUtils {
     }
     private static void createLibraryFromInputStream(String filename, InputStream is) throws IOException {
         Path libraryPath = libraryDir.resolve(filename);
-        try (is) {
+        try (InputStream inputStream = is) {
             Files.copy(is, libraryPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             try {
@@ -58,24 +58,11 @@ public class LibraryUtils {
             throw new IllegalArgumentException("Missing path.");
         }
         logger.log("Copping "+ path + " into " + libraryDir.resolve(filename));
-        try (var is = Files.newInputStream(path)) {
+        try (InputStream is = Files.newInputStream(path)) {
             createLibraryFromInputStream(filename, is);
         }
     }
-    /**
-     * Loads library from current JAR archive
-     *
-     * The file from JAR is copied into system temporary directory and then loaded. The temporary file is deleted after
-     * exiting.
-     * Method uses String as filename because the pathname is "abstract", not system-dependent.
-     *
-     * @param path The path of file inside JAR as absolute path (beginning with '/'), e.g. /package/File.ext
-     * @throws IOException If temporary file creation or read/write operation fails
-     * @throws IllegalArgumentException If source file (param path) does not exist
-     * @throws IllegalArgumentException If the path is not absolute or if the filename is shorter than three characters
-     * (restriction of {@link File#createTempFile(java.lang.String, java.lang.String)}).
-     * @throws FileNotFoundException If the file could not be found inside the JAR.
-     */
+    
     public static void extractLibraryFromJar(String path, String filename, WhisperJNI.LibraryLogger logger) throws IOException {
         if(libraryDir == null) {
             libraryDir = createTempDirectory(TEMP_FOLDER_PREFIX);
@@ -94,10 +81,7 @@ public class LibraryUtils {
         return Paths.get(generatedDir.getAbsolutePath());
     }
 
-    /**
-     * Register the native library, should be called at first.
-     * @throws IOException when unable to load the native library
-     */
+    
     public static void loadLibrary(WhisperJNI.LoadOptions options) throws IOException {
         String wrapperLibName;
         String osName = System.getProperty("os.name").toLowerCase();
@@ -133,7 +117,7 @@ public class LibraryUtils {
             wrapperLibName = "libwhisper-jni.so";
             String cpuInfo;
             try {
-                cpuInfo = Files.readString(Path.of("/proc/cpuinfo"));
+                cpuInfo = new String(Files.readAllBytes(Paths.get("/proc/cpuinfo")));
             } catch (IOException ignored) {
                 cpuInfo = "";
             }

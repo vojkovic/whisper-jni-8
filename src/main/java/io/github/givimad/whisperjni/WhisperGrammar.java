@@ -12,23 +12,12 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * The {@link WhisperGrammar} class represents a native whisper.cpp parsed grammar.
- * <p>
- * You need to dispose the native memory for its instances by calling {@link #close}
- *
- * @author Miguel Álvarez Díez - Initial contribution
- */
+
 public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
     private final WhisperJNI whisper;
     private final String grammarText;
 
-    /**
-     * Internal context constructor
-     *
-     * @param whisper library instance
-     * @param ref     native pointer identifier
-     */
+    
     protected WhisperGrammar(WhisperJNI whisper, int ref, String text) {
         super(ref);
         this.whisper = whisper;
@@ -41,50 +30,28 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
     }
 
 
-    /**
-     * Java implementation of a GBNF grammar validator.
-     * Asserts the provided grammar is valid to use with whisper.cpp.
-     * Meaning it must contain a root expression with termination
-     * which sub-expressions can be resolved.
-     *
-     * @param grammar path to a GBNF grammar.
-     * @throws ParseException if grammar is invalid.
-     */
+    
     public static void assertValidGrammar(Path grammar) throws ParseException, IOException {
         if (!Files.exists(grammar)) {
             throw new ParseException("Grammar file does not exists.", 0);
         }
-        assertValidGrammar(Files.readString(grammar));
+        assertValidGrammar(new String(Files.readAllBytes(grammar)));
     }
 
-    /**
-     * Java implementation of a whisper.cpp grammar validator.
-     * Asserts the provided grammar is valid to use with whisper.cpp.
-     * Meaning it must contain a root expression with termination
-     * which subexpressions can be resolved.
-     *
-     * @param grammarText GBNF grammar text.
-     * @throws ParseException if grammar is invalid.
-     */
+    
     public static void assertValidGrammar(String grammarText) throws ParseException {
-        if (grammarText.isBlank()) {
+        if (grammarText.isEmpty()) {
             throw new ParseException("Empty grammar.", 0);
         }
         Map<String, String> expressions = parseExpressionsText(grammarText);
-        var rootExpression = expressions.get("root");
+        String rootExpression = expressions.get("root");
         if (rootExpression == null) {
             throw new IllegalArgumentException("Missing root expression.");
         }
         assertValidExpression(expressions, rootExpression, new ArrayList<>(), new HashSet<>(), true);
     }
 
-    /**
-     * Parse and map expressions text by name.
-     *
-     * @param gbnfGrammar A GBNF grammar.
-     * @return map of expressions text by name.
-     * @throws ParseException if unable to parse unique expressions.
-     */
+    
     private static Map<String, String> parseExpressionsText(String gbnfGrammar) throws ParseException {
         String currentExpressionName = "";
         StringBuilder currentExpression = new StringBuilder();
@@ -94,7 +61,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
         for (int i = 0; i < split.length; i++) {
             String line = split[i];
             boolean isLast = i == split.length - 1;
-            if (line.isBlank()) {
+            if (line.isEmpty()) {
                 // Skip empty lines
                 continue;
             }
@@ -107,7 +74,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
                 throw new ParseException("Grammar should start with an expression", 0);
             }
             if (start) {
-                if (!currentExpressionName.isBlank()) {
+                if (!currentExpressionName.isEmpty()) {
                     expressions.put(currentExpressionName, currentExpression.toString());
                 }
                 String[] parts = line.split(assignSign);
@@ -124,7 +91,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
             currentExpression.append(" ").append(line.trim());
             if (isLast) {
                 String expression = currentExpression.toString();
-                if (expression.isBlank()) {
+                if (expression.isEmpty()) {
                     throw new ParseException("Missed expression value for: " + currentExpressionName, 0);
                 }
                 expressions.put(currentExpressionName, expression);
@@ -132,7 +99,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
         }
         if (!expressions.containsKey(currentExpressionName)) {
             String expression = currentExpression.toString();
-            if (expression.isBlank()) {
+            if (expression.isEmpty()) {
                 throw new ParseException("Missed expression value for: " + currentExpressionName, 0);
             }
             expressions.put(currentExpressionName, expression);
@@ -140,17 +107,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
         return expressions;
     }
 
-    /**
-     * Asserts that the provided text is a correct GBNF expression that can be resolved with valid subexpressions.
-     * This method calls itself recursively in order to detect missing or cyclic subexpressions.
-     *
-     * @param expressions       map of available expressions.
-     * @param expressionText    GBNF expression.
-     * @param parentExpressions List to prevent cyclic use of expressions.
-     * @param validExpressions  Store expressions already validated.
-     * @param shouldTerminate   Validate expression ends with termination char.
-     * @throws ParseException if expression is invalid.
-     */
+    
     private static void assertValidExpression(Map<String, String> expressions, String expressionText,
                                               ArrayList<String> parentExpressions, HashSet<String> validExpressions, boolean shouldTerminate)
             throws ParseException {
@@ -170,9 +127,9 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
             parentExpressions.add(tokens[0]);
         }
         for (int i = 0; i < tokens.length; i++) {
-            var token = tokens[i];
-            var isLast = i == tokens.length - 1;
-            if (token.isBlank()) {
+            String token = tokens[i];
+            boolean isLast = i == tokens.length - 1;
+            if (token.isEmpty()) {
                 continue;
             }
             if (!onText && !onRegex) {
@@ -276,7 +233,7 @@ public class WhisperGrammar extends WhisperJNI.WhisperJNIPointer {
             if (subExpression.endsWith("?")) {
                 subExpression = subExpression.substring(0, subExpression.length() - 1);
             }
-            var subExpressionValue = expressions.get(subExpression);
+            String subExpressionValue = expressions.get(subExpression);
             if (subExpressionValue == null) {
                 throw new ParseException("Unable to resolve expression: " + subExpression, 0);
             }
